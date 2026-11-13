@@ -44,6 +44,15 @@ This workflow demonstrates parallel execution of multiple branches within a grap
 
 ---
 
+### Chatbot Workflow
+
+An interactive full-stack AI chatbot powered by LangGraph and FastAPI, featuring multi-turn conversation persistence and a sleek Tailwind CSS frontend.
+This workflow demonstrates data Persistence execution.
+
+![Parallel Workflow](myenv/images/chatbot.png)
+
+---
+
 
 ## 📂 Projects
 
