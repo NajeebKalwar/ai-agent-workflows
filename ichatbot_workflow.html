@@ -1,117 +1,142 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Portfolio Chatbot</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangGraph Chatbot</title>
     <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body class="bg-zinc-950 flex items-center justify-center h-screen">
-    <div
-      class="w-full bg-[#121212] text-white rounded-xl shadow-2xl flex flex-col h-full border border-zinc-800 p-20 pb-4"
-    >
-      <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-4 p-10"></div>
+</head>
+<body class="bg-zinc-950 flex h-screen text-white">
 
-      <div class="w-1/2 mx-auto">
-        <form
-          id="chat-form"
-          class="center p-3 border-t border-zinc-800 flex gap-2 bg-[#181818] rounded-xl shadow-2xl"
-        >
-          <input
-            type="text"
-            id="user-input"
-            placeholder="Type here..."
-            class="flex-1 bg-[#222] border border-zinc-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-zinc-500"
-          />
-          <button
-            type="submit"
-            class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm transition-colors"
-          >
-            Send
-          </button>
-        </form>
-      </div>
+    <!-- SIDEBAR -->
+    <div class="w-72 bg-[#0d0d0f] border-r border-zinc-800 flex flex-col p-4">
+        <h1 class="font-semibold text-base mb-4 text-zinc-200">Conversations</h1>
+        <button onclick="createNewChat()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 py-2 px-4 rounded-xl text-sm font-medium mb-4">
+            + New Chat
+        </button>
+        <div id="threads-list" class="space-y-1 overflow-y-auto flex-1"></div>
+    </div>
+
+    <!-- CHAT AREA -->
+    <div class="flex-1 bg-[#121212] flex flex-col h-full">
+        <div id="chat-box" class="flex-1 max-w-3xl w-full mx-auto px-4 py-6 overflow-y-auto space-y-4"></div>
+
+        <div class="max-w-3xl w-full mx-auto p-4">
+            <form id="chat-form" class="flex gap-2 bg-[#181818] p-2 rounded-xl border border-zinc-800">
+                <input type="text" id="user-input" placeholder="Type a message..." autocomplete="off" class="flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none text-white"/>
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-lg text-sm font-medium">Send</button>
+            </form>
+        </div>
     </div>
 
     <script>
-      const form = document.getElementById("chat-form");
-      const input = document.getElementById("user-input");
-      const chatBox = document.getElementById("chat-box");
-      let messages = [
-        // { role: "user", content: "Hi" },
-        // { role: "assistant", content: "Hello! How can I assist you today?" },
-        // { role: "user", content: "My name is nitish" },
-        // {
-        //   role: "assistant",
-        //   content: "Nice to meet you, Nitish! How can I help you today?",
-        // },
-        // { role: "user", content: "What is the capital of India" },
-      ];
+        const form = document.getElementById('chat-form');
+        const input = document.getElementById('user-input');
+        const chatBox = document.getElementById('chat-box');
+        const threadsList = document.getElementById('threads-list');
 
-      function renderChat() {
-        chatBox.innerHTML = "";
-        messages.forEach((msg) => {
-          if (msg.role === "user") {
-            chatBox.innerHTML += `
-                        <div class="flex justify-end">
-                            <div class="max-w-[80%] p-3 rounded-lg text-sm bg-[#2A2A2A] text-white rounded-br-none">
-                                ${msg.content}
-                            </div>
-                        </div>`;
-          } else {
-            chatBox.innerHTML += `
-                        <div class="flex justify-start">
-                            <div class="max-w-[80%] p-3 rounded-lg text-sm bg-[#1E1E1E] text-zinc-200 border border-zinc-700 rounded-bl-none">
-                                ${msg.content}
-                            </div>
-                        </div>`;
-          }
-        });
-        chatBox.scrollTop = chatBox.scrollHeight;
-      }
+        let currentThreadId = localStorage.getItem('active_thread_id') || 'default-session';
+        let sessions = JSON.parse(localStorage.getItem('chat_sessions') || `[{"id": "${currentThreadId}", "title": "Main Chat"}]`);
+        let messages = [];
 
-      renderChat();
-
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const text = input.value.trim();
-        if (!text) return;
-
-        messages.push({ role: "user", content: text });
-        input.value = "";
-        renderChat();
-
-        const loadingId = "loading-" + Date.now();
-        chatBox.innerHTML += `
-                <div id="${loadingId}" class="flex justify-start">
-                    <div class="max-w-[80%] p-3 rounded-lg text-sm bg-[#1E1E1E] text-zinc-500 border border-zinc-700 italic">
-                        Thinking...
-                    </div>
-                </div>`;
-        chatBox.scrollTop = chatBox.scrollHeight;
-
-        try {
-          const res = await fetch("http://127.0.0.1:8000/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message: text,
-              thread_id: "portfolio-user",
-            }),
-          });
-          const data = await res.json();
-
-          messages.push({ role: "assistant", content: data.reply });
-          renderChat();
-        } catch (err) {
-          console.error(err);
-          document.getElementById(loadingId)?.remove();
-          messages.push({
-            role: "assistant",
-            content: "Error: Unable to connect to backend chatbot.",
-          });
-          renderChat();
+        function saveSessions() {
+            localStorage.setItem('chat_sessions', JSON.stringify(sessions));
+            localStorage.setItem('active_thread_id', currentThreadId);
         }
-      });
+
+        async function loadThread(threadId) {
+            currentThreadId = threadId;
+            saveSessions();
+            renderSidebar();
+
+            try {
+                const res = await fetch(`http://127.0.0.1:8000/chat/history/${threadId}`);
+                const data = await res.json();
+                messages = data.messages || [];
+                renderChat();
+            } catch (err) {
+                messages = [];
+                renderChat();
+            }
+        }
+
+        function createNewChat() {
+            currentThreadId = 'session_' + Math.random().toString((36).substring(2, 9));
+            sessions.unshift({ id: currentThreadId, title: 'New Chat' });
+            saveSessions();
+            messages = [];
+            renderSidebar();
+            renderChat();
+        }
+
+        function renderSidebar() {
+            threadsList.innerHTML = '';
+            sessions.forEach(s => {
+                const active = s.id === currentThreadId ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-900';
+                threadsList.innerHTML += `<button onclick="loadThread('${s.id}')" class="w-full text-left px-3 py-2 rounded-lg text-xs truncate ${active}">${s.title}</button>`;
+            });
+        }
+
+        function renderChat() {
+            chatBox.innerHTML = '';
+            messages.forEach(msg => {
+                const align = msg.role === 'user' ? 'flex justify-end' : 'flex justify-start';
+                const bg = msg.role === 'user' ? 'bg-zinc-800 text-white' : 'bg-zinc-900 text-zinc-200 border border-zinc-800';
+                chatBox.innerHTML += `<div class="${align}"><div class="max-w-[80%] px-4 py-2.5 rounded-2xl text-sm ${bg}">${msg.content}</div></div>`;
+            });
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = input.value.trim();
+            if (!text) return;
+
+            // Push user message and placeholder assistant message
+            messages.push({ role: 'user', content: text });
+            messages.push({ role: 'assistant', content: '' });
+            input.value = '';
+            renderChat();
+
+            const assistantIndex = messages.length - 1;
+
+            try {
+                const res = await fetch('http://127.0.0.1:8000/chat/stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text, thread_id: currentThreadId })
+                });
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    let lines = buffer.split('\n');
+                    buffer = lines.pop(); // Keep remaining incomplete chunk
+
+                    for (let line of lines) {
+                        if (!line.trim()) continue;
+                        const event = JSON.parse(line);
+                        if (event.type === 'token') {
+                            messages[assistantIndex].content += event.data;
+                            renderChat();
+                        }
+                    }
+                }
+            } catch (err) {
+                messages[assistantIndex].content = "Error connecting to server.";
+                renderChat();
+            }
+        });
+
+        // Initialize on load
+        renderSidebar();
+        loadThread(currentThreadId);
     </script>
-  </body>
+</body>
 </html>
