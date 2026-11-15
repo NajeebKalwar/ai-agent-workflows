@@ -61,12 +61,13 @@
         }
 
         function createNewChat() {
-            currentThreadId = 'session_' + Math.random().toString((36).substring(2, 9));
+            // Generate a clean unique session ID
+            currentThreadId = 'session_' + Math.random().toString(36).substring(2, 11);
             sessions.unshift({ id: currentThreadId, title: 'New Chat' });
             saveSessions();
-            messages = [];
-            renderSidebar();
-            renderChat();
+            
+            // Properly load the new empty thread
+            loadThread(currentThreadId);
         }
 
         function renderSidebar() {
@@ -91,6 +92,14 @@
             e.preventDefault();
             const text = input.value.trim();
             if (!text) return;
+
+            // Automatically update session title on the first message if it's named 'New Chat'
+            const activeSession = sessions.find(s => s.id === currentThreadId);
+            if (activeSession && activeSession.title === 'New Chat') {
+                activeSession.title = text.length > 20 ? text.substring(0, 20) + '...' : text;
+                saveSessions();
+                renderSidebar();
+            }
 
             // Push user message and placeholder assistant message
             messages.push({ role: 'user', content: text });
